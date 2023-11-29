@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 
 #define MAXLENGTH 101 // guaranteed maximum string length
+#define DEBUG
 
 // the number of occurences of symbol in string
 int count_symbol(char* string, char symbol) {
@@ -20,11 +21,28 @@ int count_symbol(char* string, char symbol) {
     return count;
 }
 
+// parse line into args
+char** get_args(char* line, int size) {
+    char** args = calloc(size, sizeof(char)*strlen(line));
+    char* buf = line;
+    char* saveptr;
+    for (int i = 0; i < size; ++i) {
+        args[i] = strtok_r(buf, " ", &saveptr);
+        buf = NULL;
+        if (args[i][strlen(args[i]) - 1] == '\n') {
+            args[i][strlen(args[i]) - 1 ] = 0; 
+        } else { 
+            args[i][strlen(args[i])] = 0; 
+        }
+    }
+    return args;
+}
 
 int main() {
 
     char* line = calloc(MAXLENGTH, sizeof(char));
     char* saveptr = NULL;
+    char* buf;
     pid_t pid;
 
     while (true) {
@@ -32,22 +50,14 @@ int main() {
 
         fgets(line, MAXLENGTH, stdin);
 
-        if (strncmp(line, "exit", 4) == 0) {
+        if (strncmp(line, "exit", 4) == 0) { // finish work
             printf("end program\n");
             break;
         }
 
         int blanks = count_symbol(line, ' ');
-        char** args = calloc(blanks+1, sizeof(char)*strlen(line));
-
-        for (int i = 0; (args[i] = strtok_r(line, " ", &saveptr)) != NULL; ++i) {
-            free(line); line = NULL;
-            if (args[i][strlen(args[i])] == '\n') {
-                args[i][strlen(args[i]) - 1] = 0; 
-            } else {
-                args[i][strlen(args[i])] = 0; 
-            }
-        }
+        
+        char** args = get_args(line,blanks + 1);
 
         pid = fork();
         if (pid == -1) {// error
@@ -55,18 +65,16 @@ int main() {
             exit(EXIT_FAILURE);
         } else if (pid == 0) {
             execvp(args[0], args);
-            perror("execlp");
+            perror("execvp");
             exit(EXIT_FAILURE);
         } else {
+            free(args);
             wait(NULL);
         }
 
-        line = calloc(MAXLENGTH, sizeof(char));
-
-        //putchar('\n');
     }
 
-    //free(line);
+    free(line);
 
     return 0;
 }
